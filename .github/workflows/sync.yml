@@ -3,7 +3,7 @@ name: sync-support-qa
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: '0 0 * * *'  # 매일 00:00 UTC = 09:00 KST
+    - cron: '0 8 * * *'  # 매일 08:00 UTC = 17:00 KST
 
 jobs:
   sync:
