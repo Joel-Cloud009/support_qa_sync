@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>유저 문의 검색기</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, "Malgun Gothic", sans-serif; margin: 0; padding: 24px; background: #0f1115; color: #e6e6e6; }
+  h1 { font-size: 20px; margin-bottom: 16px; }
+  .search-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+  input[type="text"] { flex: 1; padding: 10px 12px; font-size: 14px; border-radius: 6px; border: 1px solid #333; background: #1a1d24; color: #fff; }
+  button { padding: 10px 16px; font-size: 14px; border-radius: 6px; border: none; background: #3b82f6; color: #fff; cursor: pointer; }
+  button:hover { background: #2563eb; }
+  .hint { font-size: 12px; color: #888; margin-bottom: 16px; }
+  .status { font-size: 13px; color: #aaa; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #2a2d34; vertical-align: top; }
+  th { color: #9aa; position: sticky; top: 0; background: #0f1115; }
+  td.contents { white-space: pre-wrap; max-width: 480px; }
+  tr:hover { background: #1a1d24; }
+  .load-more { margin-top: 16px; }
+</style>
+</head>
+<body>
+  <h1>유저 문의 검색기 (duc_support_qa)</h1>
+  <div class="search-bar">
+    <input type="text" id="q" placeholder="문의 내용 검색어 입력 (| 로 여러 단어 구분)" onkeydown="if(event.key==='Enter') search(true)">
+    <button onclick="search(true)">검색</button>
+  </div>
+  <div class="hint">비워두고 검색하면 최신 문의 순으로 표시됩니다.</div>
+  <div class="status" id="status"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>writedate</th>
+        <th>useridx</th>
+        <th>platform</th>
+        <th>categoryidx</th>
+        <th class="contents">contents</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="load-more">
+    <button onclick="search(false)" id="moreBtn" style="display:none;">더 보기</button>
+  </div>
+
+<script>
+  const SUPABASE_URL = "https://vmmwepedsvlwdchvoreu.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtbXdlcGVkc3Zsd2RjaHZvcmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NzkwODAsImV4cCI6MjA5OTE1NTA4MH0.GPvy_VGmjxBBnEWrUSEnaxmu5T_iFhJpBJyu9881bRM";
+  const PAGE_SIZE = 50;
+  let offset = 0;
+
+  function buildUrl(query, from) {
+    const params = new URLSearchParams();
+    params.set("select", "qaidx,useridx,platform,categoryidx,contents,writedate");
+    params.set("order", "writedate.desc");
+    params.set("limit", PAGE_SIZE);
+    params.set("offset", from);
+    if (query.trim()) {
+      const words = query.split("|").map(w => w.trim()).filter(Boolean);
+      words.forEach(w => params.append("contents", `ilike.*${w}*`));
+    }
+    return `${SUPABASE_URL}/rest/v1/support_qa?${params.toString()}`;
+  }
+
+  async function search(reset) {
+    const statusEl = document.getElementById("status");
+    const rowsEl = document.getElementById("rows");
+    const moreBtn = document.getElementById("moreBtn");
+    if (reset) { offset = 0; rowsEl.innerHTML = ""; }
+
+    const q = document.getElementById("q").value;
+    statusEl.textContent = "검색 중...";
+
+    try {
+      const res = await fetch(buildUrl(q, offset), {
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      });
+      if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+      const data = await res.json();
+
+      data.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${(row.writedate ?? "").replace("T", " ")}</td>
+          <td>${row.useridx ?? ""}</td>
+          <td>${row.platform ?? ""}</td>
+          <td>${row.categoryidx ?? ""}</td>
+          <td class="contents">${(row.contents ?? "").replace(/</g, "&lt;")}</td>
+        `;
+        rowsEl.appendChild(tr);
+      });
+
+      offset += data.length;
+      statusEl.textContent = `${offset}건 표시 중`;
+      moreBtn.style.display = data.length === PAGE_SIZE ? "inline-block" : "none";
+    } catch (e) {
+      statusEl.textContent = `오류: ${e.message}`;
+    }
+  }
+
+  search(true);
+</script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+__pycache__/
+*.pyc
+redshift_config.py
