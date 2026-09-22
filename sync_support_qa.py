@@ -18,6 +18,7 @@ import os
 import sys
 import urllib.request
 import urllib.parse
+from datetime import datetime
 
 import psycopg2
 import psycopg2.extras
@@ -103,6 +104,12 @@ def upsert_rows(rows):
         resp.read()
 
 
+def _write_status(inserted):
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "last_run.txt")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"last run (UTC): {datetime.utcnow().isoformat()}Z\ninserted: {inserted}\n")
+
+
 def main():
     _require_config()
 
@@ -114,6 +121,7 @@ def main():
 
     if not rows:
         print("[완료] 신규 데이터 없음")
+        _write_status(0)
         return
 
     CHUNK = 500
@@ -121,6 +129,7 @@ def main():
         upsert_rows(rows[i:i + CHUNK])
 
     print(f"[완료] {len(rows)}건 upsert")
+    _write_status(len(rows))
 
 
 if __name__ == "__main__":
