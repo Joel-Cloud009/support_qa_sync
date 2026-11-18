@@ -1,2 +1,2 @@
-last run (UTC): 2026-11-17T17:31:46.899776Z
-inserted: 57
+last run (UTC): 2026-11-18T17:08:07.638183Z
+inserted: 86
